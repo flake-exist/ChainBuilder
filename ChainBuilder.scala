@@ -71,7 +71,7 @@ object ChainBuilder {
                                           isin(json_config.source_platform:_*)).
                                           filter($"ga_location" === json_config.product_name)
     }
-
+    //Create metric `channel` . It is indivisible unit for future  paths(chains)
     val data_custom_2 = data_custom_1.withColumn("channel", channel_creator_udf(
       $"src",
       $"ga_sourcemedium",
@@ -105,12 +105,6 @@ object ChainBuilder {
       $"HitTimeStamp"
     )
 
-//    val data_preprocess_2 = data_preprocess_1.select(
-//      $"ClientID",
-//      $"channel",
-//      $"conversion",
-//      $"HitTimeStamp"
-//    )
 
     /* Create metric `clutch`. It is concatenation `channel` and `conversion` (channelName_0 or chanelName_1)
     This metric is usefull for `path_creator_udf` to build users paths(chains)
