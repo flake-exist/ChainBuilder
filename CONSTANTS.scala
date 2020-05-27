@@ -20,6 +20,25 @@ object CONSTANTS {
     chains
   }
 
+  def channel_creator(
+                       src:String,
+                       ga_sourcemedium:String,
+                       utm_source:String,
+                       utm_medium:String,
+                       adr_typenum:String,
+                       adr_profile:String) = {
+
+    val channel = src match {
+      case "adriver" if adr_typenum == "0" => "view" + ":" + utm_source + " / " + utm_medium + ":" + adr_profile.toString
+      case "adriver" if adr_typenum != "0" => "click" + ":" + utm_source + " / " + utm_medium + ":" + adr_profile.toString
+      case "seizmik"                     => "seizmik_channel" //ALLERT NEED TO EDIT IN FUTURE!!!
+      case "ga" | "bq"                  => ga_sourcemedium
+      case _                             => throw new Exception("Unknown data source")
+    }
+    channel
+
+  }
+
 
   def DateStrToUnix(date:String):Long = {
     val date_correct = DATE_PATTERN.findFirstIn(date) match {

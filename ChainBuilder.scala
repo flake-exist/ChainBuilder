@@ -16,13 +16,14 @@ object ChainBuilder {
     val json_config = spark.read.json(args(0)).as[Jvalue].collectAsList.asScala(0) //`Jvalue` defined in `CONSTANTS` module
 
     // Seq with date_start(Unix Hit) & date_finish(Unix)
-    val date_range= Vector(json_config.date_start,
+    val date_range:Vector[Long] = Vector(json_config.date_start,
                            json_config.date_finish).map(DateStrToUnix)
 
     //Check `date_finish` is greater than `date_start`
     val date_pure = date_range match {
       case Vector(a,b) if a < b => date_range
-      case _             => throw new Exception("`date_start` is greater than `date_finish`")
+      case Vector(a,b) if a >= b => throw new Exception("`date_start` is greater than `date_finish`")
+      case _             => throw new Exception("`date_range` must have type Vector[Long]")
     }
 
     /*
@@ -33,6 +34,7 @@ object ChainBuilder {
 
     //REGISTRATION
     val path_creator_udf = spark.udf.register("path_creator",pathCreator(_:Seq[String]):Array[String])
+    val channel_creator_udf = spark.udf.register("channel_creator",channel_creator(_:String,_:String,_:String,_:String,_:String,_:String):String)
     //REGISTRATION
 
     //Connect to data
@@ -50,6 +52,9 @@ object ChainBuilder {
       $"HitTimeStamp".cast(sql.types.LongType),
       $"ga_sourcemedium",
       $"utm_source",
+      $"utm_medium",
+      $"adr_typenum",
+      $"adr_profile",
       $"ga_location",
       $"goal".cast(sql.types.LongType),
       $"src"
@@ -67,11 +72,24 @@ object ChainBuilder {
                                           filter($"ga_location" === json_config.product_name)
     }
 
+    val data_custom_2 = data_custom_1.withColumn("channel", channel_creator_udf(
+      $"src",
+      $"ga_sourcemedium",
+      $"utm_source",
+      $"utm_medium",
+      $"adr_typenum",
+      $"adr_profile")).select(
+      $"ClientID",
+      $"HitTimeStamp",
+      $"goal",
+      $"channel"
+    )
+
     /*
     Filter by `target_numbers`
     Sort by `ClientID` and `HitTimeStamp` (ascending) to build in future user(`ClientID`) path (chronological sequence of touchpoints(channels)
     */
-    val data_preprocess_0 = data_custom_1.
+    val data_preprocess_0 = data_custom_2.
       withColumn("goal",when($"goal".isNull,TRANSIT_ACTION).otherwise($"goal")).
       filter($"goal".isin(target_goal:_*)).
       sort($"ClientID", $"HitTimeStamp".asc)
@@ -80,20 +98,24 @@ object ChainBuilder {
     Secondly, check if `channel` contains null values
     */
     val data_preprocess_1 = data_preprocess_0.
-      withColumn("conversion",when($"goal" === TRANSIT_ACTION,"0").otherwise("1")).
-      withColumn("channel",when($"utm_source".isNull,"null").otherwise($"utm_source"))
-
-    val data_preprocess_2 = data_preprocess_1.select(
+      withColumn("conversion",when($"goal" === TRANSIT_ACTION,"0").otherwise("1")).select(
       $"ClientID",
       $"channel",
       $"conversion",
       $"HitTimeStamp"
     )
 
+//    val data_preprocess_2 = data_preprocess_1.select(
+//      $"ClientID",
+//      $"channel",
+//      $"conversion",
+//      $"HitTimeStamp"
+//    )
+
     /* Create metric `clutch`. It is concatenation `channel` and `conversion` (channelName_0 or chanelName_1)
     This metric is usefull for `path_creator_udf` to build users paths(chains)
     */
-    val data_union = data_preprocess_2.withColumn("clutch",concat($"channel",lit("_"),$"conversion"))
+    val data_union = data_preprocess_1.withColumn("clutch",concat($"channel",lit("_"),$"conversion"))
 
     //Collect user chronological sequence of `clutch` e.g. channels with knowledge got this channel conversion or not
     val data_assembly = data_union.select(
