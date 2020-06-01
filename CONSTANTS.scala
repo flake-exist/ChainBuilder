@@ -58,5 +58,6 @@ case class Jvalue(date_start:String,
                   projectID:Long,
                   target_numbers:Array[Long],
                   source_platform:Array[String],
-                  flat_path:String
+                  flat_path:String,
+                  output_path:String
                  )

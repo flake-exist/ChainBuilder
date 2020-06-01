@@ -14,6 +14,16 @@ object ChainBuilder {
     import spark.implicits._
     //Use case class to read .json file
     val json_config = spark.read.json(args(0)).as[Jvalue].collectAsList.asScala(0) //`Jvalue` defined in `CONSTANTS` module
+    //Create unique name (hashname) for output file basing on next parameters
+    val file_HashName = Seq(
+      json_config.projectID.toString,
+      json_config.date_start,
+      json_config.date_finish,
+      json_config.product_name,
+      json_config.target_numbers.mkString(";")).mkString("_")
+
+    //Create path where file will be saved
+    val output_path = json_config.output_path + file_HashName
 
     // Seq with date_start(Unix Hit) & date_finish(Unix)
     val date_range:Vector[Long] = Vector(json_config.date_start,
@@ -21,7 +31,7 @@ object ChainBuilder {
 
     //Check `date_finish` is greater than `date_start`
     val date_pure = date_range match {
-      case Vector(a,b) if a < b => date_range
+      case Vector(a,b) if a < b  => date_range
       case Vector(a,b) if a >= b => throw new Exception("`date_start` is greater than `date_finish`")
       case _             => throw new Exception("`date_range` must have type Vector[Long]")
     }
@@ -62,7 +72,7 @@ object ChainBuilder {
     //Customize data by client (`ProjectID`) and date range (`date_start` - `date_finish`)
     val data_custom_0 = data_work.
       filter($"HitTimeStamp" >= date_pure(0) && $"HitTimeStamp" < date_pure(1)).
-      filter($"ProjectID" === json_config.projectID)
+      filter($"ProjectID"    === json_config.projectID)
 
     //Customize data by source (`source_platform`) and current product (`product_name`) if exists
     val data_custom_1 = json_config.product_name match {
@@ -130,7 +140,8 @@ object ChainBuilder {
       count().
       sort($"count".desc)
 
-    result.show(10)
+    result.coalesce(1).write.format("csv").mode("overwrite").save(output_path)
+
 
   }
 }
