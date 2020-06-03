@@ -134,13 +134,13 @@ object ChainBuilder {
     val data_path_success = data_assembly_cache.select(
       $"ClientID",
       path_creator_udf($"clutch_arr",lit("success")).as("paths")
-    ).withColumn("status",lit(true  ))
+    ).withColumn("status",lit("true"))
 
     //Create user failed paths(chains)
     val data_path_fail = data_assembly_cache.select(
       $"ClientID",
       path_creator_udf($"clutch_arr",lit("fail")).as("paths")
-    ).withColumn("status",lit(false))
+    ).withColumn("status",lit("false"))
 
     //Union all successfull and failed paths
     val data_path = data_path_success.union(data_path_fail)
