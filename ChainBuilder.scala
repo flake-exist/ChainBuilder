@@ -125,7 +125,7 @@ object ChainBuilder {
     /* Create metric `clutch`. It is concatenation `channel` and `conversion` (channelName_0 or chanelName_1)
     This metric is usefull for `path_creator_udf` to build users paths(chains)
     */
-    val data_union = data_preprocess_1.withColumn("clutch",concat($"channel",lit("_"),$"conversion"))
+    val data_union = data_preprocess_1.withColumn("clutch",concat($"channel",lit(GLUE_SYMBOL),$"conversion"))
 
     //Collect user chronological sequence of `clutch` e.g. channels with knowledge got this channel conversion or not
     val data_assembly = data_union.select(

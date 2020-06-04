@@ -3,13 +3,16 @@ object CONSTANTS {
   val DATE_PATTERN = "[12]\\d{3}-(0[1-9]|1[0-2])-(0[1-9]|[12]\\d|3[01])".r // Pattern for RegEx . Check correct string `Date` or not
   val DATE_UNIX_TIME_STAMP = new java.text.SimpleDateFormat("yyyy-MM-dd") // Pattern to convert date(String) into Unix Time Stamp
   val TRANSIT_ACTION:Long = -1 //Indicate the action was not a conversion
+  val GLUE_SYMBOL = "::_"
+  val GLUE_SYMBOL_POS = GLUE_SYMBOL + "1"
+  val GLUE_SYMBOL_NEG = GLUE_SYMBOL + "0"
   //CONSTANT
 
   //UDF
   def pathCreator(arr         : Seq[String],
                   mode        : String,
-                  contact_pos : String = "_1",
-                  contact_neg : String = "_0",
+                  contact_pos : String = GLUE_SYMBOL_POS,
+                  contact_neg : String = GLUE_SYMBOL_NEG,
                   transit     : String = "=>"
                  )            : Array[String] = {
     //Create user paths
