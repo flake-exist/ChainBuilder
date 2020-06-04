@@ -48,27 +48,34 @@ object ChainBuilder {
     //REGISTRATION
 
     //Connect to data
+//    val data = spark.read.
+//      format("csv").
+//      option("header","true").
+//      option("delimiter",";").
+//      load(json_config.flat_path)
+
     val data = spark.read.
-      format("csv").
-      option("header","true").
-      option("delimiter",";").
+      format("parquet").
+      option("inferSchema","false").
       load(json_config.flat_path)
 
-    data.printSchema()
     //Select significant matrics for further chain creation
     val data_work = data.select(
       $"ProjectID".cast(sql.types.LongType),
-      $"ClientID",
+      $"ClientID".cast(sql.types.StringType),
       $"HitTimeStamp".cast(sql.types.LongType),
-      $"ga_sourcemedium",
-      $"utm_source",
-      $"utm_medium",
-      $"adr_typenum",
-      $"adr_profile",
-      $"ga_location",
+      $"ga_sourcemedium".cast(sql.types.StringType),
+      $"utm_source".cast(sql.types.StringType),
+      $"utm_medium".cast(sql.types.StringType),
+      $"adr_typenum".cast(sql.types.StringType),
+      $"adr_profile".cast(sql.types.StringType),
+      $"ga_location".cast(sql.types.StringType),
       $"goal".cast(sql.types.LongType),
-      $"src"
+      $"src".cast(sql.types.StringType)
     )
+
+    data_work.printSchema()
+
     //Customize data by client (`ProjectID`) and date range (`date_start` - `date_finish`)
     val data_custom_0 = data_work.
       filter($"HitTimeStamp" >= date_pure(0) && $"HitTimeStamp" < date_pure(1)).
@@ -115,7 +122,6 @@ object ChainBuilder {
       $"HitTimeStamp"
     )
 
-
     /* Create metric `clutch`. It is concatenation `channel` and `conversion` (channelName_0 or chanelName_1)
     This metric is usefull for `path_creator_udf` to build users paths(chains)
     */
@@ -134,18 +140,21 @@ object ChainBuilder {
     val data_path_success = data_assembly_cache.select(
       $"ClientID",
       path_creator_udf($"clutch_arr",lit("success")).as("paths")
-    ).withColumn("status",lit("true"))
+    ).withColumn("status",lit(true))
 
     //Create user failed paths(chains)
     val data_path_fail = data_assembly_cache.select(
       $"ClientID",
       path_creator_udf($"clutch_arr",lit("fail")).as("paths")
-    ).withColumn("status",lit("false"))
+    ).withColumn("status",lit(false))
 
     //Union all successfull and failed paths
     val data_path = data_path_success.union(data_path_fail)
 
-    val data_path_explode = data_path.select($"status",explode($"paths").as("paths"))
+    //Cache DataFrame. Cause we use it DataFrame twice
+    val data_path_explode = data_path.select($"status",explode($"paths").as("paths")).cache()
+
+    val total_conversion = data_path_explode.filter($"status" === true).count()
 
     val result = data_path_explode.
       groupBy($"paths").
@@ -153,8 +162,18 @@ object ChainBuilder {
       agg(count($"status")).
       sort($"true".desc)
 
-    result.coalesce(1).write.format("csv").mode("overwrite").save(output_path)
+    val result_sorted = try {
+      result.sort($"true".desc)
+    }
+    catch {
+      case impossible_to_sort : UnsupportedOperationException => result
+      case _                  : Throwable                     => result
+    }
 
+    //Add `share` column . `share` column signs chain share(contribution) in  total conversions
+    val result_withShare = result_sorted.withColumn("share",$"true"/lit(total_conversion))
+
+    result_withShare.coalesce(1).write.format("csv").mode("overwrite").save(output_path)
 
   }
 }
