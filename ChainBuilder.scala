@@ -167,8 +167,6 @@ object ChainBuilder {
     } catch {
       case impossible_to_sort : UnsupportedOperationException => result.withColumn("true",lit(null))
       case _                  : Throwable                     => result.withColumn("true",lit(null))
-    } finally {
-      println("Some problem with `true` column")
     }
 
     //Add `share` column . `share` column signs chain share(contribution) in  total conversions
