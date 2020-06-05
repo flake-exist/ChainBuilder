@@ -2,10 +2,12 @@ object CONSTANTS {
   //CONSTANT
   val DATE_PATTERN = "[12]\\d{3}-(0[1-9]|1[0-2])-(0[1-9]|[12]\\d|3[01])".r // Pattern for RegEx . Check correct string `Date` or not
   val DATE_UNIX_TIME_STAMP = new java.text.SimpleDateFormat("yyyy-MM-dd") // Pattern to convert date(String) into Unix Time Stamp
-  val TRANSIT_ACTION:Long = -1 //Indicate the action was not a conversion
-  val GLUE_SYMBOL = "::_"
-  val GLUE_SYMBOL_POS = GLUE_SYMBOL + "1"
-  val GLUE_SYMBOL_NEG = GLUE_SYMBOL + "0"
+  val TRANSIT_ACTION       : Long   = -1 //Indicate the action was not a conversion
+  val GLUE_SYMBOL          : String = "::_" //Use it to concatenate `channel` columns with `conversion` columns
+  val CONVERSION_SYMBOL    : String = "get@conv"
+  val NO_CONVERSION_SYMBOL : String = "get@no_conv"
+  val GLUE_SYMBOL_POS      : String = GLUE_SYMBOL + CONVERSION_SYMBOL //symbol denotes the contact with channel ended up with conversion
+  val GLUE_SYMBOL_NEG      : String = GLUE_SYMBOL + NO_CONVERSION_SYMBOL //symbol denotes the contact with channel ended up without conversion
   //CONSTANT
 
   //UDF
@@ -54,12 +56,12 @@ object CONSTANTS {
       case _       => throw new Exception("Incorrect Date Format.Use YYYY-MM_dd format")}
     date_correct
     }
-
+  //function check value if it equals null or is empty
   def isEmpty(x:String) = x == null || x.isEmpty
 
   }
 
-
+//Class for parsing input json file
 case class Jvalue(date_start      : String,
                   date_finish     : String,
                   product_name    : String,

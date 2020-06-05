@@ -33,7 +33,7 @@ object ChainBuilder {
     val date_pure = date_range match {
       case Vector(a,b) if a < b  => date_range
       case Vector(a,b) if a >= b => throw new Exception("`date_start` is greater than `date_finish`")
-      case _             => throw new Exception("`date_range` must have type Vector[Long]")
+      case _                     => throw new Exception("`date_range` must have type Vector[Long]")
     }
 
     /*
@@ -115,7 +115,7 @@ object ChainBuilder {
     Secondly, check if `channel` contains null values
     */
     val data_preprocess_1 = data_preprocess_0.
-      withColumn("conversion",when($"goal" === TRANSIT_ACTION,"0").otherwise("1")).select(
+      withColumn("conversion",when($"goal" === TRANSIT_ACTION,NO_CONVERSION_SYMBOL).otherwise(CONVERSION_SYMBOL)).select(
       $"ClientID",
       $"channel",
       $"conversion",
