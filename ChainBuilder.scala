@@ -156,23 +156,35 @@ object ChainBuilder {
 
     val total_conversion = data_path_explode.filter($"status" === true).count()
 
+    //`status` column has Boolean type and consists of true and false values. We did pivot method to get `paths`|`true`|`false` columns
     val result = data_path_explode.
       groupBy($"paths").
       pivot($"status").
-      agg(count($"status")).
-      sort($"true".desc)
+      agg(count($"status"))
 
     val result_sorted = try {
       result.sort($"true".desc)
-    }
-    catch {
-      case impossible_to_sort : UnsupportedOperationException => result
-      case _                  : Throwable                     => result
+    } catch {
+      case impossible_to_sort : UnsupportedOperationException => result.withColumn("true",lit(null))
+      case _                  : Throwable                     => result.withColumn("true",lit(null))
+    } finally {
+      println("Some problem with `true` column")
     }
 
     //Add `share` column . `share` column signs chain share(contribution) in  total conversions
-    val result_withShare = result_sorted.withColumn("share",$"true"/lit(total_conversion))
+    val result_withShare = result_sorted.withColumn("share", $"true" / lit(total_conversion))
 
-    result_withShare.coalesce(1).write.format("csv").option("header","true").mode("overwrite").save(output_path)
+    val output_data = result_withShare.select(
+      $"paths",
+      $"true",
+      $"false",
+      $"share"
+    )
+
+    output_data.coalesce(1).
+      write.format("csv").
+      option("header","true").
+      mode("overwrite").
+      save(output_path)
   }
 }
