@@ -173,7 +173,6 @@ object ChainBuilder {
     //Add `share` column . `share` column signs chain share(contribution) in  total conversions
     val result_withShare = result_sorted.withColumn("share",$"true"/lit(total_conversion))
 
-    result_withShare.coalesce(1).write.format("csv").mode("overwrite").save(output_path)
-
+    result_withShare.coalesce(1).write.format("csv").option("header","true").mode("overwrite").save(output_path)
   }
 }
