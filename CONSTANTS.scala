@@ -8,6 +8,16 @@ object CONSTANTS {
   val NO_CONVERSION_SYMBOL : String = "get@no_conv"
   val GLUE_SYMBOL_POS      : String = GLUE_SYMBOL + CONVERSION_SYMBOL //symbol denotes the contact with channel ended up with conversion
   val GLUE_SYMBOL_NEG      : String = GLUE_SYMBOL + NO_CONVERSION_SYMBOL //symbol denotes the contact with channel ended up without conversion
+  val usage = "Usage : [--projectID] ] [--date_start] [--date_finish] [--target_numbers] [--product_name] [--source_platform] [--flat_path] [--output_path]"
+  val necessary_args = Array(
+    "projectID",
+    "date_start",
+    "date_finish",
+    "target_numbers",
+    "product_name",
+    "source_platform",
+    "flat_path",
+    "output_path")
   //CONSTANT
 
   //UDF
@@ -57,11 +67,32 @@ object CONSTANTS {
     date_correct
     }
   //function check value if it equals null or is empty
-  def isEmpty(x:String) = x == null || x.isEmpty
+  def isEmpty(x:String) = x == "null" || x.isEmpty || x == null
+
+  //Parse input arguments from command line.Convert position arguments to named arguments
+  def argsPars(args:Array[String],usage:String): collection.mutable.Map[String,String] = {
+
+    if (args.length == 0) {
+      throw new Exception(s"Empty argument Array. $usage")
+    }
+
+    val (options,_) = args.partition(_.startsWith("-")) //Collect [--arg=value] from iargs
+    val optionsMap  = collection.mutable.Map[String,String]()
+    options.map{elem =>
+      val pair_untrust  = elem.split("=")
+      val pair_trust = pair_untrust match {
+        case Array(_,_) => pair_untrust
+        case _          => throw new Exception(s"Can not parse $pair_untrust. $usage")
+      }
+      val opt_val  = pair_trust(0).split("-{1,2}")(1) -> pair_trust(1)
+      optionsMap += opt_val //Add Map(option -> value)
+    }
+    optionsMap
+  }
 
   }
 
-//Class for parsing input json file
+//Class for parsing input json file. Used with input one argument - JSON file
 case class Jvalue(date_start      : String,
                   date_finish     : String,
                   product_name    : String,
@@ -71,3 +102,17 @@ case class Jvalue(date_start      : String,
                   flat_path       : String,
                   output_path     : String
                  )
+
+//Class for collecting input args and its values from command line
+case class ArgValue(date_start    : String,
+                  date_finish     : String,
+                  product_name    : String,
+                  projectID       : Long,
+                  target_numbers  : Array[Long],
+                  source_platform : Array[String],
+                  flat_path       : String,
+                  output_path     : String
+                 )
+
+
+
