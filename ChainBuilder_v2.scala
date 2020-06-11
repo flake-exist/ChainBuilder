@@ -39,6 +39,11 @@ object ChainBuilder_v2 {
     } catch {
       case _ : Throwable => throw new Exception("projectID : Convert error")
     }
+
+    val flat_path        = try {optionsMap("flat_path").stripPrefix("[").stripSuffix("]").split(",").map(_.toString)
+    } catch {
+      case _ : Throwable => throw new Exception("flat_path : Convert error")
+    }
     //----------CHECK ARGS TYPES----------
 
     val arg_value = ArgValue(
@@ -48,7 +53,7 @@ object ChainBuilder_v2 {
       projectID,
       target_numbers,
       source_platform,
-      optionsMap("flat_path"),
+      flat_path,
       optionsMap("output_path")
     )
 
@@ -96,7 +101,7 @@ object ChainBuilder_v2 {
     val data = spark.read.
       format("parquet").
       option("inferSchema","false").
-      load(arg_value.flat_path)
+      load(flat_path:_*)
 
     //Select significant matrics for further chain creation
     val data_work = data.select(
