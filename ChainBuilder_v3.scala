@@ -18,10 +18,6 @@ object ChainBuilder_v3 {
 
     val validMap = argsValid(optionsMap) // Validation input arguments types and building Map
 
-//    val date_tail:String = "2019-07-01"
-//    val date_tailPure:Long = DateStrToUnix(date_tail)
-    val attrWindowMode:Boolean = true
-
     //Safe class contains correct input argument types
     val arg_value = ArgValue(
       validMap("date_start").asInstanceOf[String],
@@ -32,21 +28,22 @@ object ChainBuilder_v3 {
       validMap("target_numbers").asInstanceOf[Array[Long]],
       validMap("source_platform").asInstanceOf[Array[String]],
       validMap("flat_path").asInstanceOf[Array[String]],
-      validMap("output_path").asInstanceOf[String]
+      validMap("output_path").asInstanceOf[String],
+      validMap("output_pathD").asInstanceOf[String]
     )
 
     val date_tHOLD:Long = DateStrToUnix(arg_value.date_tHOLD)
 
     //Create unique name (hashname) for output file basing on next parameters
-    val file_HashName = Seq(
-      arg_value.projectID.toString,
-      arg_value.date_start,
-      arg_value.date_finish,
-      arg_value.product_name,
-      arg_value.target_numbers.mkString(";")).mkString("_")
+//    val file_HashName = Seq(
+//      arg_value.projectID.toString,
+//      arg_value.date_start,
+//      arg_value.date_finish,
+//      arg_value.product_name,
+//      arg_value.target_numbers.mkString(";")).mkString("_")
 
     //Create path where file will be saved
-    val output_path = arg_value.output_path + file_HashName
+//    val output_path = arg_value.output_path + file_HashName
 
     // Seq with date_start(Unix Hit) & date_finish(Unix)
     val date_range:Vector[Long] = Vector(
@@ -175,8 +172,6 @@ object ChainBuilder_v3 {
       searchInception_udf($"touch_data_arr",lit(date_pure(0)),lit(NO_CONVERSION_SYMBOL)).as("touch_data_arr"))
       .cache()
 
-    //---TIME---
-
     val data_bulk_HTS = data_touchTube.select(
       $"ClientID",
       channelTube_udf($"touch_data_arr").as("channel_seq"),
@@ -205,75 +200,13 @@ object ChainBuilder_v3 {
         write.format("csv").
         option("header","true").
         mode("overwrite").
-        save("/home/eva91/Documents/OMD/hts")
+        save(arg_value.output_pathD)
 
     data_agg.coalesce(1).
       write.format("csv").
       option("header","true").
       mode("overwrite").
-      save(output_path)
-
-
-
-    //---TIME---
-
-    //---CHANNEL---
-
-//    val data_bulk_CHNL_cache = data_touchTube.select(
-//      $"ClientID",
-//      channelTube_udf($"touch_data_arr").as("channel_seq")
-//    )
-//
-//    //Create user successful paths(chains)
-//    val data_path_success = data_bulk_CHNL_cache.select(
-//      $"ClientID",
-//      path_creator_udf($"channel_seq",lit("success")).as("paths")
-//    ).withColumn("status",lit(true))
-////
-//    //Create user failed paths(chains)
-//    val data_path_fail = data_bulk_CHNL_cache.select(
-//      $"ClientID",
-//      path_creator_udf($"channel_seq",lit("fail")).as("paths")
-//    ).withColumn("status",lit(false))
-////
-//    //Union all successfull and failed paths
-//    val data_path = data_path_success.union(data_path_fail)
-////
-//    //Cache DataFrame. Cause we use it DataFrame twice
-//    val data_path_explode = data_path.select($"status",explode($"paths").as("paths")).cache()
-////
-//    val total_conversion = data_path_explode.filter($"status" === true).count() //ACTION
-////
-//    //`status` column has Boolean type and consists of true and false values. We did pivot method to get `paths`|`true`|`false` columns
-//    val result = data_path_explode.
-//      groupBy($"paths").
-//      pivot($"status").
-//      agg(count($"status"))
-////
-//    val result_sorted = try {
-//      result.sort($"true".desc)
-//    } catch {
-//      case impossible_to_sort : UnsupportedOperationException => result.withColumn("true",lit(null))
-//      case _                  : Throwable                     => result.withColumn("true",lit(null))
-//    }
-////
-//    //Add `share` column . `share` column signs chain share(contribution) in  total conversions
-//    val result_withShare = result_sorted.withColumn("share", $"true" / lit(total_conversion))
-////
-//    val output_data = result_withShare.select(
-//      $"paths",
-//      $"true",
-//      $"false",
-//      $"share"
-//    )
-//
-//    output_data.coalesce(1).
-//      write.format("csv").
-//      option("header","true").
-//      mode("overwrite").
-//      save(output_path)
-
-    //---CHANNEL---
+      save(arg_value.output_path)
 
   }
 }

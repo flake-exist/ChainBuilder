@@ -18,7 +18,8 @@ object CONSTANTS {
     "product_name",
     "source_platform",
     "flat_path",
-    "output_path")
+    "output_path",
+    "output_pathD")
   //CONSTANT
 
   //UDF
@@ -149,11 +150,12 @@ object CONSTANTS {
       case _    => throw new Exception(usage)
     }
 
-    validMap += "date_start"   -> optionsMap("date_start").trim
-    validMap += "date_tHOLD"   -> optionsMap("date_tHOLD").trim
-    validMap += "date_finish"  -> optionsMap("date_finish").trim
-    validMap += "product_name" -> optionsMap("product_name").trim
-    validMap += "output_path"  -> optionsMap("output_path").trim
+    validMap += "date_start"    -> optionsMap("date_start").trim
+    validMap += "date_tHOLD"    -> optionsMap("date_tHOLD").trim
+    validMap += "date_finish"   -> optionsMap("date_finish").trim
+    validMap += "product_name"  -> optionsMap("product_name").trim
+    validMap += "output_path"   -> optionsMap("output_path").trim
+    validMap += "output_pathD"  -> optionsMap("output_pathD").trim
 
     try {
       validMap  += "target_numbers" -> optionsMap("target_numbers").split(",").map(_.trim).map(_.toLong)
@@ -193,7 +195,8 @@ case class ArgValue(date_start      : String,
                     target_numbers  : Array[Long],
                     source_platform : Array[String],
                     flat_path       : Array[String],
-                    output_path     : String
+                    output_path     : String,
+                    output_pathD    : String
                  )
 
 //Class for parsing input json file. Used with input one argument - JSON file
