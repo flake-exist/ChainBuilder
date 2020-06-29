@@ -8,7 +8,7 @@ object CONSTANTS {
   val NO_CONVERSION_SYMBOL : String = "get@no_conv"
   val GLUE_SYMBOL_POS      : String = GLUE_SYMBOL + CONVERSION_SYMBOL //symbol denotes the contact with channel ended up with conversion
   val GLUE_SYMBOL_NEG      : String = GLUE_SYMBOL + NO_CONVERSION_SYMBOL //symbol denotes the contact with channel ended up without conversion
-  val usage = "Usage : [--projectID] ] [--date_start] [--date_tHOLD] [--date_finish] [--target_numbers] [--product_name] [--source_platform] [--flat_path] [--output_path]"
+  val usage = "Usage : [--projectID] [--date_start] [--date_tHOLD] [--date_finish] [--target_numbers] [--product_name] [--source_platform] [--flat_path] [--output_path] [--output_pathD]"
   val necessary_args = Array(
     "projectID",
     "date_start",
@@ -22,7 +22,7 @@ object CONSTANTS {
     "output_pathD")
   //CONSTANT
 
-  //UDF
+
   def pathCreator(arr         : Seq[String],
                   mode        : String,
                   contact_pos : String = GLUE_SYMBOL_POS,
@@ -30,7 +30,6 @@ object CONSTANTS {
                   transit     : String = "=>"
                  )            : Array[String] = {
     //Create user paths
-
     val touchpoints = arr.mkString(transit)
     val paths = touchpoints.split(contact_pos).map(_.trim)
     val target_paths = mode match {
@@ -69,24 +68,6 @@ object CONSTANTS {
     arr.map(_.keys.head)
   }
 
-  def extractValue(arr:Seq[Map[String,Long]]):Seq[String] = {
-    arr.map(_.values.head.toString)
-  }
-
-
-
-//  def htsSeqCreatorTail(arr:Seq[Map[String,Long]],date_start:Long,no_conversion:String):Seq[Long] = {
-//    val arr_reverse = arr.reverse
-//    val (before,after) = arr_reverse.partition(elem =>elem(elem.keySet.head) < date_start)
-//    val before_sort = before.takeWhile(elem => elem.keySet.head.endsWith(no_conversion))
-//    val r = before_sort.reverse  ++ after.reverse
-//    val result = r.map(_.values.head)
-//    result
-//  }
-
-
-
-
   def channel_creator(
                        src:String,
                        ga_sourcemedium : String,
@@ -106,13 +87,13 @@ object CONSTANTS {
 
   }
 
-
   def DateStrToUnix(date:String):Long = {
     val date_correct = DATE_PATTERN.findFirstIn(date) match {
       case Some(s) => DATE_UNIX_TIME_STAMP.parse(s).getTime()
       case _       => throw new Exception("Incorrect Date Format.Use YYYY-MM_dd format")}
     date_correct
     }
+
   //function check value if it equals null or is empty
   def isEmpty(x:String) = x == "null" || x.isEmpty || x == null
 
@@ -198,6 +179,8 @@ case class ArgValue(date_start      : String,
                     output_path     : String,
                     output_pathD    : String
                  )
+
+case class DateBond(start:Long,finish:Long)
 
 //Class for parsing input json file. Used with input one argument - JSON file
 case class Jvalue(date_start      : String,

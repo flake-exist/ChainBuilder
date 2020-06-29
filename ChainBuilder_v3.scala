@@ -34,17 +34,6 @@ object ChainBuilder_v3 {
 
     val date_tHOLD:Long = DateStrToUnix(arg_value.date_tHOLD)
 
-    //Create unique name (hashname) for output file basing on next parameters
-//    val file_HashName = Seq(
-//      arg_value.projectID.toString,
-//      arg_value.date_start,
-//      arg_value.date_finish,
-//      arg_value.product_name,
-//      arg_value.target_numbers.mkString(";")).mkString("_")
-
-    //Create path where file will be saved
-//    val output_path = arg_value.output_path + file_HashName
-
     // Seq with date_start(Unix Hit) & date_finish(Unix)
     val date_range:Vector[Long] = Vector(
       arg_value.date_start,
@@ -56,6 +45,15 @@ object ChainBuilder_v3 {
       case Vector(a,b) if a >= b => throw new Exception("`date_start` is greater than `date_finish`")
       case _                     => throw new Exception("`date_range` must have type Vector[Long]")
     }
+
+    val bonds = DateBond(date_pure(0),date_pure(1))
+
+    //Check correct chronology input dates
+    val validDatesOrder = date_tHOLD match {
+      case correct if date_tHOLD <= bonds.start => true
+      case _                           => throw new Exception("`date_tHOLD` must be less or equal than `date_start`")
+    }
+
 
     /*
     `target_numbers` are Google Analytics goal IDs we want to explore for chain creation and further Attribution.
@@ -69,9 +67,6 @@ object ChainBuilder_v3 {
     val searchInception_udf = spark.udf.register("searchInception",searchInception(_:Seq[Map[String,Long]],_:Long,_:String):Seq[Map[String,Long]])
     val htsTube_udf         = spark.udf.register("htsTube",htsTube(_:Seq[Map[String,Long]]):Seq[String])
     val channelTube_udf     = spark.udf.register("channelTube",channelTube(_:Seq[Map[String,Long]]):Seq[String])
-    val extract_value_udf   = spark.udf.register("extractValue",extractValue(_:Seq[Map[String,Long]]):Seq[String])
-
-
     //REGISTRATION
 
 
@@ -100,7 +95,7 @@ object ChainBuilder_v3 {
 
     //Customize data by client (`ProjectID`) and date range (`date_start` - `date_finish`)
     val data_custom_0 = data_work.
-      filter($"HitTimeStamp" >= date_tHOLD && $"HitTimeStamp" < date_pure(1)).
+      filter($"HitTimeStamp" >= date_tHOLD && $"HitTimeStamp" < bonds.finish).
       filter($"ProjectID"    === arg_value.projectID)
 
 
@@ -125,7 +120,7 @@ object ChainBuilder_v3 {
     //Find ClientIDs committed conversions
     val actorsID = data_custom_2.
       filter($"goal".isin(arg_value.target_numbers:_*)).
-      filter($"HitTimeStamp" >= date_pure(0) && $"HitTimeStamp" < date_pure(1)).
+      filter($"HitTimeStamp" >= bonds.start && $"HitTimeStamp" < bonds.finish).
       select($"ClientID").distinct.collect().map(_(0).toString)
 
     //Filter only relevant data to `actorsID`
@@ -169,22 +164,23 @@ object ChainBuilder_v3 {
     //For each ClientID exists `touch_data_arr` - the sequence of `touch_data` e.g User path , from first contact with channel till last
     val data_touchTube = data_group.select(
       $"ClientID",
-      searchInception_udf($"touch_data_arr",lit(date_pure(0)),lit(NO_CONVERSION_SYMBOL)).as("touch_data_arr"))
+      searchInception_udf($"touch_data_arr",lit(bonds.start),lit(NO_CONVERSION_SYMBOL)).as("touch_data_arr"))
       .cache()
 
-    val data_bulk_HTS = data_touchTube.select(
+    //Create separately each other for each ClientID the channel sequence (`channel_seq`) and corresponding hts sequence(`hts_seq`)
+    val data_seq = data_touchTube.select(
       $"ClientID",
       channelTube_udf($"touch_data_arr").as("channel_seq"),
       htsTube_udf($"touch_data_arr").as("hts_seq"))
 
-
-    val data_seqHTS = data_bulk_HTS.select(
+    //Use `path_creator_udf` to create ClientID from channel sequence -> channel chains and from hts sequence -> hts chains
+    val data_chain = data_seq.select(
       $"ClientID",
       path_creator_udf($"channel_seq",lit("success")).as("channel_paths_arr"),
       path_creator_udf($"hts_seq",lit("success")).as("hts_paths_arr")
     )
 
-    val data_pathInfo = data_seqHTS.withColumn("path_zip_hts",explode(arrays_zip($"channel_paths_arr",$"hts_paths_arr"))).
+    val data_pathInfo = data_chain.withColumn("path_zip_hts",explode(arrays_zip($"channel_paths_arr",$"hts_paths_arr"))).
       select(
         $"ClientID",
         $"path_zip_hts.channel_paths_arr".as("user_path"),
