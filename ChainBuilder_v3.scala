@@ -59,11 +59,13 @@ object ChainBuilder_v3 {
     `target_numbers` are Google Analytics goal IDs we want to explore for chain creation and further Attribution.
     For the sake to create chain need to add user non-conversion actions out of site or non-conversion actions on site
     */
-    val target_goals = arg_value.target_numbers :+ TRANSIT_ACTION //`TRANSIT_ACTION ` defined in `CONSTANTS` module
+    val target_numbersWithEmpty = arg_value.target_numbers :+ TRANSIT_ACTION //`TRANSIT_ACTION ` defined in `CONSTANTS` module
+
+    val target_numbersCSV:String = arg_value.target_numbers.map(_.toString).mkString(",") //`target_numbersCSV` for writing to CSV format ,cause CSV does not support bigInt
 
     //REGISTRATION
     val path_creator_udf    = spark.udf.register("path_creator",pathCreator(_:Seq[String],_:String):Array[String])
-    val channel_creator_udf = spark.udf.register("channel_creator",channel_creator(_:String,_:String,_:String,_:String,_:String,_:String):String)
+    val channel_creator_udf = spark.udf.register("channel_creator",channel_creator(_:String,_:String,_:String,_:String,_:String,_:String,_:String):String)
     val searchInception_udf = spark.udf.register("searchInception",searchInception(_:Seq[Map[String,Long]],_:Long,_:String):Seq[Map[String,Long]])
     val htsTube_udf         = spark.udf.register("htsTube",htsTube(_:Seq[Map[String,Long]]):Seq[String])
     val channelTube_udf     = spark.udf.register("channelTube",channelTube(_:Seq[Map[String,Long]]):Seq[String])
@@ -86,6 +88,7 @@ object ChainBuilder_v3 {
       $"ga_sourcemedium".cast(sql.types.StringType),
       $"utm_source".cast(sql.types.StringType),
       $"utm_medium".cast(sql.types.StringType),
+      $"utm_campaign".cast(sql.types.StringType),
       $"adr_typenum".cast(sql.types.StringType),
       $"adr_profile".cast(sql.types.StringType),
       $"ga_location".cast(sql.types.StringType),
@@ -108,12 +111,12 @@ object ChainBuilder_v3 {
     }
 
     /*
-    Filter by `target_goals`
+    Filter by `target_numbersWithEmpty`
     Sort by `ClientID` and `HitTimeStamp` (ascending) to build in future user(`ClientID`) path (chronological sequence of touchpoints(channels)
     */
     val data_custom_2 = data_custom_1.
       withColumn("goal",when($"goal".isNull,TRANSIT_ACTION).otherwise($"goal")).
-      filter($"goal".isin(target_goals:_*)).
+      filter($"goal".isin(target_numbersWithEmpty:_*)).
       sort($"ClientID", $"HitTimeStamp".asc).cache()
 
 
@@ -134,6 +137,7 @@ object ChainBuilder_v3 {
       $"ga_sourcemedium",
       $"utm_source",
       $"utm_medium",
+      $"utm_campaign",
       $"adr_typenum",
       $"adr_profile")).select(
       $"ClientID",
@@ -180,11 +184,14 @@ object ChainBuilder_v3 {
       path_creator_udf($"hts_seq",lit("success")).as("hts_paths_arr")
     )
 
-    val data_pathInfo = data_chain.withColumn("path_zip_hts",explode(arrays_zip($"channel_paths_arr",$"hts_paths_arr"))).
+    val data_pathInfo = data_chain.
+      withColumn("path_zip_hts",explode(arrays_zip($"channel_paths_arr",$"hts_paths_arr"))).
+      withColumn("target_numbers",lit(target_numbersCSV)).
       select(
         $"ClientID",
         $"path_zip_hts.channel_paths_arr".as("user_path"),
-        $"path_zip_hts.hts_paths_arr".as("timeline")
+        $"path_zip_hts.hts_paths_arr".as("timeline"),
+        $"target_numbers"
       )
 
     val data_agg = data_pathInfo.
