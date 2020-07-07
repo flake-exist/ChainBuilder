@@ -8,7 +8,7 @@ object CONSTANTS {
   val NO_CONVERSION_SYMBOL : String = "get@no_conv"
   val GLUE_SYMBOL_POS      : String = GLUE_SYMBOL + CONVERSION_SYMBOL //symbol denotes the contact with channel ended up with conversion
   val GLUE_SYMBOL_NEG      : String = GLUE_SYMBOL + NO_CONVERSION_SYMBOL //symbol denotes the contact with channel ended up without conversion
-  val usage = "Usage : [--projectID] [--date_start] [--date_tHOLD] [--date_finish] [--target_numbers] [--product_name] [--source_platform] [--flat_path] [--output_path] [--output_pathD]"
+  val usage = "Usage : [--projectID] [--date_start] [--date_tHOLD] [--date_finish] [--target_numbers] [--product_name] [--source_platform] [--achieve_mode] [--flat_path] [--output_path] [--output_pathD]"
   val necessary_args = Array(
     "projectID",
     "date_start",
@@ -17,6 +17,7 @@ object CONSTANTS {
     "target_numbers",
     "product_name",
     "source_platform",
+    "achieve_mode",
     "flat_path",
     "output_path",
     "output_pathD")
@@ -36,16 +37,16 @@ object CONSTANTS {
       case "success" => paths.filterNot(_.endsWith(contact_neg)).map(_.stripPrefix(transit))
       case "fail"    => paths.filter(_.endsWith(contact_neg)).map(_.stripPrefix(transit))
     }
-//    val success_paths = paths.filterNot(_.endsWith(contact_neg)).map(_.stripPrefix(transit))
+    //    val success_paths = paths.filterNot(_.endsWith(contact_neg)).map(_.stripPrefix(transit))
     val chains = target_paths.map(_.replace(contact_neg,""))
     chains
   }
 
   def htsTube(arr         : Seq[Map[String,Long]],
-                  contact_pos : String = GLUE_SYMBOL_POS,
-                  contact_neg : String = GLUE_SYMBOL_NEG,
-                  transit     : String = "=>"
-                 )            : Seq[String] = {
+              contact_pos : String = GLUE_SYMBOL_POS,
+              contact_neg : String = GLUE_SYMBOL_NEG,
+              transit     : String = "=>"
+             )            : Seq[String] = {
     //Create user paths
     val htsSeq = arr.map{elem => elem match {
       case conversion if(elem.keys.head.endsWith(contact_pos)) => elem.values.head.toString + contact_pos
@@ -59,8 +60,8 @@ object CONSTANTS {
     val (before,after) = arr_reverse.partition(elem =>elem(elem.keySet.head) < date_start)
     val before_sort = before.takeWhile(elem => elem.keySet.head.endsWith(no_conversion))
     val r = before_sort.reverse  ++ after.reverse
-//    val result = r.map(_.keys.head)
-//    result
+    //    val result = r.map(_.keys.head)
+    //    result
     r
   }
 
@@ -93,7 +94,7 @@ object CONSTANTS {
       case Some(s) => DATE_UNIX_TIME_STAMP.parse(s).getTime()
       case _       => throw new Exception("Incorrect Date Format.Use YYYY-MM_dd format")}
     date_correct
-    }
+  }
 
   //function check value if it equals null or is empty
   def isEmpty(x:String) = x == "null" || x.isEmpty || x == null
@@ -138,6 +139,7 @@ object CONSTANTS {
     validMap += "product_name"  -> optionsMap("product_name").trim
     validMap += "output_path"   -> optionsMap("output_path").trim
     validMap += "output_pathD"  -> optionsMap("output_pathD").trim
+    validMap += "achieve_mode"  -> optionsMap("achieve_mode").trim
 
     try {
       validMap  += "target_numbers" -> optionsMap("target_numbers").split(",").map(_.trim).map(_.toLong)
@@ -166,7 +168,7 @@ object CONSTANTS {
     validMap
   }
 
-  }
+}
 
 //Class for collecting input args and its values from command line
 case class ArgValue(date_start      : String,
@@ -176,23 +178,10 @@ case class ArgValue(date_start      : String,
                     projectID       : Long,
                     target_numbers  : Array[Long],
                     source_platform : Array[String],
+                    achieve_mode    : String,
                     flat_path       : Array[String],
                     output_path     : String,
                     output_pathD    : String
-                 )
+                   )
 
 case class DateBond(start:Long,finish:Long)
-
-//Class for parsing input json file. Used with input one argument - JSON file
-case class Jvalue(date_start      : String,
-                  date_finish     : String,
-                  product_name    : String,
-                  projectID       : Long,
-                  target_numbers  : Array[Long],
-                  source_platform : Array[String],
-                  flat_path       : String,
-                  output_path     : String
-                 )
-
-
-
