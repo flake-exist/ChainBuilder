@@ -1,7 +1,9 @@
 import org.apache.spark.sql
 import org.apache.spark.sql.functions._
 import org.apache.spark.sql.SparkSession
+import java.time._
 import CONSTANTS._
+
 
 
 object ChainBuilder {
@@ -28,12 +30,12 @@ object ChainBuilder {
       validMap("output_pathD").asInstanceOf[String]
     )
 
-    val date_tHOLD:Long = DateStrToUnix(arg_value.date_tHOLD)
+    val date_tHOLD:Long = localDateToUTC(arg_value.date_tHOLD)
 
     // Seq with date_start(Unix Hit) & date_finish(Unix)
     val date_range:Vector[Long] = Vector(
       arg_value.date_start,
-      arg_value.date_finish).map(DateStrToUnix)
+      arg_value.date_finish).map(localDateToUTC(_))
 
     //Check `date_finish` is greater than `date_start`
     val date_pure = date_range match {

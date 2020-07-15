@@ -1,3 +1,5 @@
+import java.time._
+
 object CONSTANTS {
   //CONSTANT
   val DATE_PATTERN = "[12]\\d{3}-(0[1-9]|1[0-2])-(0[1-9]|[12]\\d|3[01])".r // Pattern for RegEx . Check correct string `Date` or not
@@ -167,6 +169,17 @@ object CONSTANTS {
 
     validMap
   }
+
+  def localDateToUTC(simmple_date:String,local_format:String="T00:00:00+03:00[Europe/Moscow]"):Long = {
+    val zone_date:String = simmple_date + local_format //local date format with timezone
+    val utcZoneId = ZoneId.of("UTC")
+    val zonedDateTime = ZonedDateTime.parse(zone_date)
+    val utcDateTime = zonedDateTime.withZoneSameInstant(utcZoneId) //UTC date
+    val unix_time:Long = utcDateTime.toInstant.toEpochMilli //UNIX time
+    unix_time
+  }
+
+
 
 }
 
