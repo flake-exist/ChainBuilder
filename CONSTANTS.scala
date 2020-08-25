@@ -72,17 +72,20 @@ object CONSTANTS {
   }
 
   def channel_creator(
-                       src:String,
-                       ga_sourcemedium : String,
-                       utm_source      : String,
-                       utm_medium      : String,
-                       utm_campaign    : String,
-                       adr_typenum     : String,
-                       adr_profile     : String) = {
+                       src                  :String,
+                       ga_sourcemedium      : String,
+                       utm_source           : String,
+                       utm_medium           : String,
+                       utm_campaign         : String,
+                       interaction_type     : String,
+                       dcm_placement_id     : String,
+                       profile          : String) = {
 
     val channel = src match {
-      case "adriver" if adr_typenum == "0" => "view" + ":" + utm_source + " / " + utm_medium + " / " + utm_campaign + ":" + adr_profile.toString
-      case "adriver" if adr_typenum != "0" => "click" + ":" + utm_source + " / " + utm_medium + " / " + utm_campaign + ":" + adr_profile.toString
+      case "adriver" if interaction_type == "view"   => "view"  + ":" + utm_source + " / " + utm_medium + " / " + utm_campaign + ":" + profile.toString
+      case "adriver" if interaction_type == "click"  => "click" + ":" + utm_source + " / " + utm_medium + " / " + utm_campaign + ":" + profile.toString
+      case "dcm"     if interaction_type == "view"   => "view"  + ":" + utm_source + " / " + utm_medium + " / " + utm_campaign + ":" + dcm_placement_id.toString
+      case "dcm"     if interaction_type == "click"  => "click" + ":" + utm_source + " / " + utm_medium + " / " + utm_campaign + ":" + dcm_placement_id.toString
       case "seizmik"                       => "seizmik_channel" //ALLERT NEED TO EDIT IN FUTURE!!!
       case "ga" | "bq"                     => ga_sourcemedium + " / " + utm_campaign
       case _                               => throw new Exception("Unknown data source")
