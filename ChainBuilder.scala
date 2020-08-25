@@ -56,7 +56,7 @@ object ChainBuilder {
 
     //REGISTRATION
     val path_creator_udf    = spark.udf.register("path_creator",pathCreator(_:Seq[String],_:String):Array[String])
-    val channel_creator_udf = spark.udf.register("channel_creator",channel_creator(_:String,_:String,_:String,_:String,_:String,_:String,_:String):String)
+    val channel_creator_udf = spark.udf.register("channel_creator",channel_creator(_:String,_:String,_:String,_:String,_:String,_:String,_:String,_:String):String)
     val searchInception_udf = spark.udf.register("searchInception",searchInception(_:Seq[Map[String,Long]],_:Long,_:String):Seq[Map[String,Long]])
     val htsTube_udf         = spark.udf.register("htsTube",htsTube(_:Seq[Map[String,Long]]):Seq[String])
     val channelTube_udf     = spark.udf.register("channelTube",channelTube(_:Seq[Map[String,Long]]):Seq[String])
@@ -77,8 +77,9 @@ object ChainBuilder {
       $"utm_source".cast(sql.types.StringType),
       $"utm_medium".cast(sql.types.StringType),
       $"utm_campaign".cast(sql.types.StringType),
-      $"adr_typenum".cast(sql.types.StringType),
-      $"adr_profile".cast(sql.types.StringType),
+      $"interaction_type".cast(sql.types.StringType),
+      $"dcm_placement_id".cast(sql.types.StringType),
+      $"profile".cast(sql.types.StringType),
       $"ga_location".cast(sql.types.StringType),
       $"goal".cast(sql.types.LongType),
       $"src".cast(sql.types.StringType)
@@ -87,7 +88,8 @@ object ChainBuilder {
     //Customize data by client (`ProjectID`) and date range (`date_start` - `date_finish`)
     val data_custom_0 = data_work.
       filter($"HitTimeStamp" >= date_tHOLD && $"HitTimeStamp" < bonds.finish).
-      filter($"ProjectID"    === arg_value.projectID)
+      filter($"ProjectID"    === arg_value.projectID).
+      filter($"goal".isNull || $"goal".isin(arg_value.target_numbers:_*)) //added 25.08.2020
 
     //Customize data by source (`source_platform`) and current product (`product_name`) if exists
     val data_custom_1 = arg_value.product_name match {
@@ -103,8 +105,9 @@ object ChainBuilder {
       $"utm_source",
       $"utm_medium",
       $"utm_campaign",
-      $"adr_typenum",
-      $"adr_profile")).select(
+      $"interaction_type",
+      $"dcm_placement_id",
+      $"profile")).select(
       $"ClientID",
       $"HitTimeStamp",
       $"goal",
@@ -118,6 +121,8 @@ object ChainBuilder {
       withColumn("goal",when($"goal".isin(arg_value.target_numbers:_*),$"goal").otherwise(TRANSIT_ACTION)).
       sort($"ClientID", $"HitTimeStamp".asc).
       cache()
+
+    data_preprocess_1.groupBy("goal").agg(count($"ClientID")).show() //!!!!!!!!
 
     //  Select `ClientID` which participated in conversions (`target_numbers`) in current period (`date_start` - `date_finish`)
     val actorsID = data_preprocess_1.
@@ -149,6 +154,8 @@ object ChainBuilder {
         $"conversion",
         $"HitTimeStamp"
       )
+
+    data_bulk_1.groupBy("conversion").agg(count($"ClientID")).show() //!!!!!!!!
 
     //Create new metric `channel_conv`
     val data_union = data_bulk_1.withColumn("channel_conv",concat($"channel",lit(GLUE_SYMBOL),$"conversion"))
